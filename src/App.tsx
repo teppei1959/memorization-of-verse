@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 
 // ---- 型定義 ----
@@ -19,7 +19,7 @@ const Button: React.FC<ButtonProps> = ({ children, onClick, className = "" }) =>
   <button
     onClick={onClick}
     className={`bg-gradient-to-r from-pink-400 via-yellow-400 to-green-400
-                text-white font-bold px-6 py-3 rounded-lg shadow-lg
+                text-white font-bold px-4 py-2 rounded-lg shadow-md
                 hover:scale-105 transition-transform duration-200 ${className}`}
   >
     {children}
@@ -41,30 +41,38 @@ const CardContent: React.FC<CardProps> = ({ children, className = "" }) => (
   <div className={`p-2 ${className}`}>{children}</div>
 );
 
-// ---- 聖句一覧画面（テーブル版） ----
+// ---- 聖句一覧画面（削除機能付き） ----
 interface VerseListProps {
   verses: Verse[];
+  deleteVerse: (id: number) => void;
 }
 
-const VerseList: React.FC<VerseListProps> = ({ verses }) => {
+const VerseList: React.FC<VerseListProps> = ({ verses, deleteVerse }) => {
   const navigate = useNavigate();
+
+  const handleDelete = (id: number) => {
+    if (window.confirm("この聖句を削除してもよろしいですか？")) {
+      deleteVerse(id);
+    }
+  };
 
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-gradient-to-r from-pink-50 via-yellow-50 to-green-50 p-4">
       <h1 className="text-3xl font-bold mb-6 text-center">聖句一覧</h1>
 
-      <div className="w-full max-w-3xl overflow-x-auto">
+      <div className="w-full max-w-4xl overflow-x-auto">
         <table className="min-w-full border-collapse shadow-lg rounded-lg overflow-hidden">
           <thead>
             <tr className="bg-pink-400 text-white text-left">
               <th className="px-6 py-3">タイトル</th>
               <th className="px-6 py-3">内容</th>
+              <th className="px-6 py-3 text-center">操作</th>
             </tr>
           </thead>
           <tbody>
             {verses.length === 0 ? (
               <tr>
-                <td colSpan={2} className="text-center px-6 py-4 text-gray-700">
+                <td colSpan={3} className="text-center px-6 py-4 text-gray-700">
                   登録された聖句はありません。
                 </td>
               </tr>
@@ -78,6 +86,14 @@ const VerseList: React.FC<VerseListProps> = ({ verses }) => {
                 >
                   <td className="px-6 py-4 font-semibold text-pink-500">{v.title}</td>
                   <td className="px-6 py-4 text-gray-700">{v.content}</td>
+                  <td className="px-6 py-4 text-center">
+                    <button
+                      onClick={() => handleDelete(v.id)}
+                      className="bg-red-500 text-black px-3 py-1 rounded-md hover:bg-red-600 transition"
+                    >
+                      削除
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -93,7 +109,7 @@ const VerseList: React.FC<VerseListProps> = ({ verses }) => {
   );
 };
 
-// ---- 聖句登録画面（縦並び・ラベル付き） ----
+// ---- 聖句登録画面 ----
 interface VerseRegisterProps {
   addVerse: (verse: Verse) => void;
 }
@@ -218,14 +234,32 @@ const VerseQuiz: React.FC<VerseQuizProps> = ({ verses }) => {
 const App: React.FC = () => {
   const [verses, setVerses] = useState<Verse[]>([]);
 
+  // 起動時に localStorage から読み込む
+  useEffect(() => {
+    const saved = localStorage.getItem("verses");
+    if (saved) {
+      setVerses(JSON.parse(saved));
+    }
+  }, []);
+
+  // 追加時に localStorage に保存
   const addVerse = (verse: Verse) => {
-    setVerses([...verses, verse]);
+    const updated = [...verses, verse];
+    setVerses(updated);
+    localStorage.setItem("verses", JSON.stringify(updated));
+  };
+
+  // 削除機能
+  const deleteVerse = (id: number) => {
+    const updated = verses.filter((v) => v.id !== id);
+    setVerses(updated);
+    localStorage.setItem("verses", JSON.stringify(updated));
   };
 
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<VerseList verses={verses} />} />
+        <Route path="/" element={<VerseList verses={verses} deleteVerse={deleteVerse} />} />
         <Route path="/register" element={<VerseRegister addVerse={addVerse} />} />
         <Route path="/quiz" element={<VerseQuiz verses={verses} />} />
       </Routes>
